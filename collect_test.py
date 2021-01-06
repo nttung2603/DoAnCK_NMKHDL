@@ -78,7 +78,6 @@ def get_data(subjects):
 articles =  get_data(subjects)
 
 
-# +
 def create_dataframe(articles):
     data = []
     for subject in articles:
@@ -89,6 +88,10 @@ def create_dataframe(articles):
     data_df = pd.DataFrame(data, columns=['Nội dung văn bản', 'Chủ đề'])
     data_df = data_df.explode('Nội dung văn bản', ignore_index = True)
     return data_df
-
 data_df = create_dataframe(articles)
+data_df
+
+data_df.drop(data_df[data_df['Nội dung văn bản'].map(len) < 500].index, inplace = True)
+data_df.shape
+
 data_df.to_csv('test.csv')

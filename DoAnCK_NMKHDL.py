@@ -23,10 +23,9 @@ import seaborn as sns # seaborn là thư viện được xây trên matplotlib, 
 import requests
 from bs4 import BeautifulSoup
 from pyvi import ViTokenizer # thư viện NLP tiếng Việt
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
+from sklearn.preprocessing import LabelEncoder
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 from sklearn.pipeline import Pipeline
@@ -53,7 +52,7 @@ list_symbols.extend(get_symbols(123, 126))
 # Biến `subjects` lưu chủ đề của các bài báo
 
 # subjects = ['thoi-su', 'the-gioi', 'kinh-doanh', 'giai-tri',
-#             'the-thao', 'giao-duc', 'suc-khoe', 'du-lich', 'khoa-hoc']
+#             'the-thao', 'giao-duc', 'suc-khoe', 'du-lich']
 subjects = ['thoi-su','the-gioi','kinh-doanh', 'giai-tri', 'the-thao', 'giao-duc', 'suc-khoe', 'du-lich']
 
 # Hàm `get_urls` ở bên dưới có các input:
@@ -65,7 +64,6 @@ subjects = ['thoi-su','the-gioi','kinh-doanh', 'giai-tri', 'the-thao', 'giao-duc
 #
 # <b>Nhưng</b> ở chủ đề `the-thao` do cấu trúc của trang web nên url sẽ thay đổi. VD: https://vnexpress.net/the-thao/p1
 
-# +
 articles = dict()
 def get_urls(subject, page):
     urls = []
@@ -83,42 +81,9 @@ def get_urls(subject, page):
     for i in range(len(titles)):
         urls.append(titles[i].a["href"])
     return urls
-            
-def get_datas(subjects, num_page = 1):
-    articles = dict()
-    for subject in subjects:
-        contents = []
-        for page in range(1, num_page + 1):
-            urls = get_urls(subject, page)
-            for url in urls:
-                print(url)
-                html_text = requests.get(url).text
-                tree = BeautifulSoup(html_text, 'html.parser')
-                content = tree.find('div', {'class': 'sidebar-1'})
-                header = content.find('div', {'class': 'header-content width_common'})
-                if (header != None):
-                    header.decompose()
-                """writer = content.find('p', {'class': 'Normal'})
-                if (writer['style'] != None):
-                    list_news.decompose()"""
-                list_news = content.find('ul', {'class': 'list-news'})
-                if (list_news != None):
-                    list_news.decompose()
-                footer = content.find('div', {'class': 'footer-content'})
-                if (footer != None):
-                    footer.decompose()
-                text = content.text
-                for symbol in list_symbols:
-                    text = text.replace(symbol, ' ')
-
-                contents.append(text)
-        articles[subject] = contents
-    return articles
 
 
-# -
-
-# Hàm `get_datas` ở bên dưới có các input:
+# Hàm `get_data` ở bên dưới có các input:
 # - `subjects`: là một list các chủ đề.
 # - `num_page`: là một số, thể hiện mỗi chủ đề sẽ tìm kiếm bao nhiêu trang.
 #
@@ -126,7 +91,7 @@ def get_datas(subjects, num_page = 1):
 #
 # Trong hàm ta sẽ xử lý một phần dữ liệu: Xóa đi các ký tự đặc biệt trong đoạn text ta thu thập được.
 
-def get_datas(subjects, num_page = 1):
+def get_data(subjects, num_page = 1):
     articles = dict()
     for subject in subjects:
         contents = []
@@ -159,7 +124,7 @@ def get_datas(subjects, num_page = 1):
 
 
 #Thu thập dữ liệu
-articles =  get_datas(subjects, num_page = 2)
+articles =  get_data(subjects, num_page = 2)
 
 
 # Hàm `split_word` ở bên dưới có input:
@@ -175,7 +140,7 @@ def split_word(articles):
 articles = split_word(articles)
 
 
-# Hàm `split_word` ở bên dưới có input:
+# Hàm `create_dataframe` ở bên dưới có input:
 # - `articles`: là một dictionary với key là chủ đề bài báo, value: là một list nội dung các bài báo trong chủ đề đó.
 #
 # Output: Trả về DataFrame được tạo ra từ `articles`.
@@ -191,6 +156,7 @@ def create_dataframe(articles):
     data_df = data_df.explode('Nội dung văn bản', ignore_index = True)
     return data_df
 data_df = create_dataframe(articles)
+data_df
 
 # ---
 
@@ -205,7 +171,10 @@ data_df.shape
 data_df.index.duplicated().sum()
 
 #Cột output hiện có kiểu dữ liệu gì?
-data_df['Nội dung văn bản'].dtypes
+data_df.dtypes
+
+#Có dòng nào không lấy được nội dung văn bản không?
+data_df['Nội dung văn bản'].isna().sum()
 
 # Cột output có giá trị thiếu không?
 data_df['Chủ đề'].isna().sum()
@@ -217,18 +186,27 @@ data_df['Chủ đề'].value_counts(normalize=True) * 100
 
 # ---
 
+# ## Tiền xử lý dữ liệu
+
+# Xóa đi những dòng có số kí tự ít hơn `?` (Có thể có những dòng không lấy được dữ liệu vì không giống định dạng mẫu)
+
+data_df.drop(data_df[data_df['Nội dung văn bản'].map(len) < 500].index, inplace = True)
+#Dữ liệu sau khi xóa.
+data_df.shape
+
+# Ta sẽ chuyển cột Output `Chủ đề` thành dạng số
+
+y_df = data_df['Chủ đề']
+X_df = data_df['Nội dung văn bản']
+encoder = LabelEncoder()
+y_df = encoder.fit_transform(y_df)
+
+# ---
+
 # ## Tách dữ liệu + Mô hình hóa
 
 #Tách dữ liệu thành tập train và tập test
-y_df = data_df['Chủ đề']
-X_df = data_df['Nội dung văn bản']
 X_train, X_val, y_train, y_val = train_test_split(X_df, y_df, test_size=0.3,stratify = y_df, random_state=0)
-
-# Chuyển đổi Output từ dạng chuỗi thành dạng số
-
-encoder = preprocessing.LabelEncoder()
-y_train= encoder.fit_transform(y_train)
-y_val = encoder.transform(y_val)
 
 # Tạo Pipeline
 
@@ -259,7 +237,7 @@ for alpha in alphas:
             best_val_err = val_score
             best_alpha = alpha
             best_max_features = max_features
-    
+
 
 # Trực quan hóa kết quả
 train_errs_df = pd.DataFrame(data=np.array(train_errs).reshape(len(alphas), -1),
@@ -297,8 +275,7 @@ accuracy_score(val_predictions, y_val)
 # ### Mô hình tốt nhất
 
 process_pipeline.set_params(tfidf__max_features = best_max_features, 
-                                    classifier__alpha = best_alpha)
-y_df = encoder.transform(y_df)
+                            classifier__alpha = best_alpha)
 process_pipeline.fit(X_df, y_df)
 
 # ### Sử dụng mô hình tốt nhất để dự đoán tập test
