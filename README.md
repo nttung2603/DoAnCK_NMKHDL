@@ -1,7 +1,7 @@
 # DoAnCK_NMKHDL
 STT nhóm: 35
-1. Nguyễn Huy Hải. MSSV: 18120023
-2. Nguyễn Thanh Tùng. MSSV: 18120104.
+1. Nguyễn Huy Hải. MSSV: 18120023. Account github: https://github.com/HuyHaiNguyen
+2. Nguyễn Thanh Tùng. MSSV: 18120104. Account github: https://github.com/nttung2603
 
 #Chú thích các file
 1. DoAnCK_NMKHDL.ipynb : file code đồ án (khám phá dữ liệu, tiền xử lý dữ liệu, huấn luyện mô hình, test mô hình)
